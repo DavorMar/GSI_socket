@@ -3,6 +3,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
+from datetime import datetime, timedelta
 
 
 
@@ -13,17 +14,21 @@ ADDR = (SERVER, PORT)
 HEADER = 64
 FORMAT = "utf-8"
 DISCONNECT_MESSAGE = "!DISCONNECT"
+CHUNK_SIZE = 8192
 
 
 
 class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
+        now = datetime.now()
+
         length = int(self.headers["Content-Length"])
         body = self.rfile.read(length).decode("utf-8")
-        print(len(body))
+
         payload = json.loads(body)
-        # print(payload)
-        self.server.payload = payload
+        payload = json.dumps(payload)
+        self.server.payload = [payload[i:i + CHUNK_SIZE] for i in range(0, len(payload), CHUNK_SIZE)]
+        self.server.payload.append(now.strftime('%Y-%m-%d %H:%M:%S.%f'))
         self.server.running = True
         # with open(r"data_sample.json", "w") as fp:
         #     json.dump(payload, fp, indent=4)
@@ -39,7 +44,8 @@ class Server(HTTPServer):
         self.serverx.setblocking(False)
 
         self.running = False
-        self.payload = ""
+        self.payload = []
+
 
 
 
@@ -47,36 +53,40 @@ class Server(HTTPServer):
         print(f"New connection {addr} connected")
         connected = True
         datas_sent = 0
+
         while connected:
             try:
-                msg_length = conn.recv(HEADER).decode(FORMAT)
-                if msg_length:
-                    msg_length = int(msg_length)
-                    msg = conn.recv(msg_length).decode(FORMAT)
-                    if msg == DISCONNECT_MESSAGE:
-                        connected = False
-                        print(f"{addr}: disconnected")
+                msg = conn.recv(HEADER).decode(FORMAT)
+
+                if msg == DISCONNECT_MESSAGE:
+                    connected = False
+                    print(f"{addr}: disconnected")
             except BlockingIOError as e:
                 # Handle the BlockingIOError and continue the loop
                 if e.errno != 10035:
                     # Reraise the exception if it's not the expected error
                     raise
             try:
+                payload = self.payload[:]
+                time_string = payload.pop()
+                payload.append("done")
+                payload.append(time_string)
+                for chunk in payload:
+                    conn.send(chunk.encode(FORMAT))
+                    time.sleep(0.0001)
 
-                conn.send(json.dumps(self.payload).encode(FORMAT))
-                print("sent_data ", datas_sent)
-                datas_sent += 1
-            except:
-                # print("failed_send")
-                pass
+            except BlockingIOError as e:
+                if e.errno != 10035:
+                    # Reraise the exception if it's not the expected error
+                    raise
         conn.close()
 
 
 
     def start(self):
         try:
-            threa = threading.Thread(target=self.serve_forever)
-            threa.start()
+            gsi_thread = threading.Thread(target=self.serve_forever)
+            gsi_thread.start()
             first_time = True
             while not self.running:
                 if first_time:
