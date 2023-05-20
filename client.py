@@ -1,14 +1,13 @@
 import socket
-import time
 import json
 from datetime import datetime, timedelta
+import time
 
 HEADER = 64
 FORMAT = "utf-8"
 DISCONNECT_MESSAGE = "!DISCONNECT"
 CHUNK_SIZE = 32768
-
-
+TEST = True
 
 
 
@@ -20,7 +19,6 @@ def send(msg):
     send_length += b' ' * (HEADER - len(send_length))
     client.send(send_length)
     client.send(message)
-    print((client.recv(2000)))
 
 if __name__ == "__main__":
     ip_inputted = False
@@ -38,41 +36,44 @@ if __name__ == "__main__":
                 print("wrong input, please respond with y or n")
 
     addr = (ip, int(port))
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(addr)
-    print("client connected")
     try:
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect(addr)
+        print("client connected")
+
         print("Starting data read")
         time.sleep(3)
         while True:
-            date_chunk = client.recv(CHUNK_SIZE).decode(FORMAT)
             try:
-                time = datetime.strptime(date_chunk,'%Y-%m-%d %H:%M:%S.%f')
-                # print(datetime.now() - time)
-            except:
-                pass
+                date_chunk = client.recv(CHUNK_SIZE).decode(FORMAT)
+                try:
+                    timex = datetime.strptime(date_chunk,'%Y-%m-%d %H:%M:%S.%f')
+                    print(datetime.now() - timex)
+                except:
+                    pass
 
-            received_data = ""
-            loop_bool = True
-            while loop_bool:
-                chunk = client.recv(CHUNK_SIZE).decode(FORMAT)
-                if not chunk:
-                    print("not chunk")
-                    loop_bool = False
-                elif chunk in ["done", " done"]:
-                    loop_bool = False
-                    try:
-                        data = json.loads(received_data)
-                        print(data)
-                    except:
-                        print("failed first json")
-                received_data += chunk
-                    # print(received_data)
-    except KeyboardInterrupt:
-        send(DISCONNECT_MESSAGE)
-        print("Disconnecting")
+                received_data = ""
+                loop_bool = True
+                while loop_bool:
+                    chunk = client.recv(CHUNK_SIZE).decode(FORMAT)
+                    if not chunk:
+                        print("not chunk")
+                        loop_bool = False
+                    elif chunk in ["done", " done"]:
+                        loop_bool = False
+                        try:
+                            data = json.loads(received_data)
+                            # print(data)
+                        except:
+                            print("failed first json")
+                    received_data += chunk
+                        # print(received_data)
+            except KeyboardInterrupt:
+                print("Interrupting program")
+                break
 
 
     finally:
         send(DISCONNECT_MESSAGE)
+        time.sleep(1)
         print("Disconnecting")

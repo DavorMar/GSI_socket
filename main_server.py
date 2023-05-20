@@ -6,29 +6,24 @@ import json
 from datetime import datetime, timedelta
 
 
-
 HEADER = 64
 FORMAT = "utf-8"
 DISCONNECT_MESSAGE = "!DISCONNECT"
 CHUNK_SIZE = 32768
+TEST = True
+
 
 class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         now = datetime.now()
-
         length = int(self.headers["Content-Length"])
         body = self.rfile.read(length).decode("utf-8")
-
         payload = json.loads(body)
         payload = json.dumps(payload)
         self.server.payload = [payload[i:i + CHUNK_SIZE] for i in range(0, len(payload), CHUNK_SIZE)]
-        self.server.payload.append(now.strftime('%Y-%m-%d %H:%M:%S.%f'))
-        self.server.running = True
-        # print(datetime.now()-now)
-        # with open(r"data_sample.json", "w") as fp:
-        #     json.dump(payload, fp, indent=4)
-
-
+        if TEST:
+            self.server.payload.append(now.strftime('%Y-%m-%d %H:%M:%S.%f'))
+            self.server.running = True
 
 
 class Server(HTTPServer):
@@ -39,7 +34,6 @@ class Server(HTTPServer):
         addr = (self.ip_addr, socket_port)
         self.serverx.bind(addr)
         self.serverx.setblocking(False)
-
         self.running = False
         self.payload = []
         self.exit_flag = False
@@ -50,13 +44,9 @@ class Server(HTTPServer):
 
     def handle_client(self,conn, addr):
         print(f"New connection {addr} connected")
-        connected = True
-        datas_sent = 0
-
         while not self.exit_flag:
             try:
                 msg = conn.recv(HEADER).decode(FORMAT)
-
                 if msg == DISCONNECT_MESSAGE:
                     print(f"{addr}: disconnected")
                     break
@@ -66,12 +56,14 @@ class Server(HTTPServer):
                 if e.errno != 10035:
                     # Reraise the exception if it's not the expected error
                     raise
+
             try:
                 payload = self.payload[:]
-                time_string = payload.pop()
+                if TEST:
+                    time_string = payload.pop()
                 payload.append("done")
-                payload.append(time_string)
-
+                if TEST:
+                    payload.append(time_string)
                 for chunk in payload:
                     conn.send(chunk.encode(FORMAT))
                     time.sleep(0.0001)
@@ -80,10 +72,10 @@ class Server(HTTPServer):
                 if e.errno != 10035:
                     # Reraise the exception if it's not the expected error
                     raise
+            except (ConnectionResetError, ConnectionAbortedError):
+                print("possible disconnect")
 
         conn.close()
-
-
 
     def start(self):
         try:
