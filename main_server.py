@@ -4,20 +4,13 @@ import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 from datetime import datetime, timedelta
-import re
 
 
 
-PORT = 5050
-# SERVER = '192.168.0.14'
-SERVER = socket.gethostbyname(socket.gethostname())
-ADDR = (SERVER, PORT)
 HEADER = 64
 FORMAT = "utf-8"
 DISCONNECT_MESSAGE = "!DISCONNECT"
-CHUNK_SIZE = 8192 * 4
-
-
+CHUNK_SIZE = 32768
 
 class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -39,14 +32,18 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 
 class Server(HTTPServer):
-    def __init__(self,server_address):
+    def __init__(self,server_address, socket_port):
         super(Server, self).__init__(server_address, RequestHandler)
         self.serverx = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.serverx.bind(ADDR)
+        self.ip_addr = socket.gethostbyname(socket.gethostname())
+        addr = (self.ip_addr, socket_port)
+        self.serverx.bind(addr)
         self.serverx.setblocking(False)
 
         self.running = False
         self.payload = []
+        self.exit_flag = False
+
 
 
 
@@ -56,13 +53,14 @@ class Server(HTTPServer):
         connected = True
         datas_sent = 0
 
-        while connected:
+        while not self.exit_flag:
             try:
                 msg = conn.recv(HEADER).decode(FORMAT)
 
                 if msg == DISCONNECT_MESSAGE:
-                    connected = False
                     print(f"{addr}: disconnected")
+                    break
+
             except BlockingIOError as e:
                 # Handle the BlockingIOError and continue the loop
                 if e.errno != 10035:
@@ -89,8 +87,8 @@ class Server(HTTPServer):
 
     def start(self):
         try:
-            gsi_thread = threading.Thread(target=self.serve_forever)
-            gsi_thread.start()
+            self.gsi_thread = threading.Thread(target=self.serve_forever)
+            self.gsi_thread.start()
             first_time = True
             while not self.running:
                 if first_time:
@@ -101,8 +99,8 @@ class Server(HTTPServer):
             return
         print("Dota gsi server started, starting sockets now")
         self.serverx.listen()
-        print("server is listening on ", SERVER)
-        while True:
+        print("server is listening on ", self.ip_addr )
+        while not self.exit_flag:
             try:
                 conn, addr = self.serverx.accept()
                 thread = threading.Thread(target=self.handle_client, args=(conn, addr))
@@ -113,51 +111,6 @@ class Server(HTTPServer):
                     # Reraise the exception if it's not the expected error
                     raise
 
-def scan_port():
-    path = r"C:\Program Files (x86)\Steam\steamapps\common\dota 2 beta\game\dota\cfg\gamestate_integration\gamestate_integration_dota2-gsi.cfg"
-    with open(path, "r") as fp:
-        read_string = fp.read()
-
-    pattern = r':\d{4,6}'
-
-    try:
-        port = int(re.search(pattern, read_string).group()[1:])
-        return port
-    except AttributeError:
-        return 12345678
-
-def prompt_port():
-    port = scan_port()
-    if port == 12345678:
-        print("couldnt scan port in GSI cfg file.")
-    else:
-        while True:
-            answer = input(f"Do you want to use scanned port {port}? y/n ")
-            if answer.lower() == "y":
-                return port
-            elif answer.lower() == "n":
-                break
-            else:
-                print("Please write a y/n answer")
-                continue
-    while True:
-        port = input("Please input the port your GSI config file is set to or your desired port: ")
-        try:
-            port = int(port)
-        except ValueError:
-            print("Input a correct port number between 80 and 99999")
-            continue
-        if port < 80 or port > 99999:
-            print("Input a correct port number between 80 and 99999")
-        else:
-            print(f"Server is starting on port {port}")
-            return port
 
 
 
-if __name__ == '__main__':
-    port = prompt_port()
-    server2 = Server(("0.0.0.0", port))
-    # app.run(host='0.0.0.0', port=3000)
-    print("Server is starting")
-    server2.start()

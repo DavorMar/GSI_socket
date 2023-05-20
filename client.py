@@ -4,11 +4,9 @@ import json
 from datetime import datetime, timedelta
 
 HEADER = 64
-# PORT = 5050
 FORMAT = "utf-8"
 DISCONNECT_MESSAGE = "!DISCONNECT"
-# SERVER = "192.168.56.1"
-CHUNK_SIZE = 8192 * 4
+CHUNK_SIZE = 32768
 
 
 
