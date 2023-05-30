@@ -35,67 +35,55 @@ if __name__ == "__main__":
             else:
                 print("wrong input, please respond with y or n")
 
-    addr = (ip, int(port))
+    # addr = (ip, int(port))
+    addr=("192.168.0.14",5050)
     try:
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
         client.connect(addr)
+
         print("client connected")
 
         print("Starting data read")
-        time.sleep(3)
+        time.sleep(2)
 
         while True:
             try:
-                if TEST:
-                    date_chunk = client.recv(CHUNK_SIZE).decode(FORMAT)
-                    try:
-                        timex = datetime.strptime(date_chunk,'%Y-%m-%d %H:%M:%S.%f')
-                        print(datetime.now() - timex)
-                        # time.sleep(0.01 - (datetime.now() - timex))
-                    except:
-                        pass
-
                 send("!GIVE")
                 loop_bool = True
                 next_chunk_size = CHUNK_SIZE
                 whole_data = {}
-                first_write = True
+                chunk = client.recv(2).decode(FORMAT)
 
-                while loop_bool:
-                    try:
-                        # if first_write:
-                        #     chunk = client.recv(CHUNK_SIZE).decode(FORMAT)
-                        # else:
-                        #     # print(next_chunk_size)
-                        chunk = client.recv(next_chunk_size).decode(FORMAT)
-                        print(chunk[:11])
-                        if not chunk:
-                            print("not chunk")
-                            loop_bool = False
-                        elif int(chunk[:2]) == int(chunk[3:5]):
-                            whole_data[int(chunk[:2])] = chunk[11:]
-                            whole_data_string = ""
-                            for string in whole_data.values():
-                                whole_data_string = whole_data_string + string
-                            whole_data_json = json.loads(whole_data_string)
-                            print(whole_data_json.keys())
-                            print("finished")
-                            loop_bool = False
-                        elif first_write:
-                            for i in range(int(chunk[3:5])):
-                                whole_data[i] = ""
-                            whole_data[int(chunk[:2])] = chunk[11:]
-                            first_write = False
-                            next_chunk_size = int(chunk[6:10])
-                        else:
-                            next_chunk_size = int(chunk[6:10])
-                            whole_data[int(chunk[:2])] = chunk[11:]
-                    except ValueError:
-                        loop_bool=False
+                for i in range(int(chunk)):
+                    whole_data[i] = ""
+
+                for i in range(int(chunk)):
+                    chunk2 = client.recv(next_chunk_size).decode(FORMAT)
+                    next_chunk_size = int(chunk2[6:10])
+                    whole_data[int(chunk2[:2])] = chunk2[11:]
+                    print(chunk2[:11])
+                    time.sleep(0.0001)
+
+                whole_data_string = ""
+                for string in whole_data.values():
+                    whole_data_string = whole_data_string + string
+                whole_data_json = json.loads(whole_data_string)
+                print(whole_data_json.keys())
+                print("finished")
+
+
 
 
                         #     with open("dota_data.json", "w") as fp:
                         #         json.dump(data, fp, indent=4)
+            except ValueError:
+                print("value fail")
+                # while True:
+                #     chunkx = client.recv(CHUNK_SIZE).decode(FORMAT)
+                #     if not chunkx:
+                #         break
+
 
             except KeyboardInterrupt:
                 print("Interrupting program")
