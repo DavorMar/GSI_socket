@@ -25,14 +25,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         payload = json.loads(body)
         payload = self.filter_json(payload)
         payload = json.dumps(payload)
-        # print(len(payload))
-        # print(payload)
         self.server.payload = [payload[i:i + CHUNK_SIZE] for i in range(0, len(payload), CHUNK_SIZE)]
-        # print(len(self.server.payload))
         self.server.running = True
-        if TEST:
-            self.server.payload.append(now.strftime('%Y-%m-%d %H:%M:%S.%f'))
-        time.sleep(5)
 
     def filter_json(self, payload):
         if len(payload["buildings"]["radiant"].keys()) < 2:
