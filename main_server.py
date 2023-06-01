@@ -23,25 +23,34 @@ class RequestHandler(BaseHTTPRequestHandler):
         length = int(self.headers["Content-Length"])
         body = self.rfile.read(length).decode("utf-8")
         payload = json.loads(body)
-        payload = self.filter_json(payload)
-        payload = json.dumps(payload)
-        self.server.payload = payload
+        print(payload)
+        try:
+            payload = self.filter_json(payload)
+            print(payload)
+            payload = json.dumps(payload)
+            self.server.payload = payload
+
+        except:
+            pass
+
         self.server.running = True
 
     def filter_json(self, payload):
-        if len(payload["buildings"]["radiant"].keys()) < 2:
-            draft = True
-        else:
-            draft = False
-        if draft:
+        if "buildings" not in payload.keys():
+            return {"draft_state": False,
+                    "game_state":False}
+        elif len(payload["buildings"]["radiant"].keys()) < 2:
             new_payload = {
-                "draft_state": draft,
+                "draft_state": True,
+                "game_state": True,
                 "draft": {}
             }
             new_payload['draft'] = payload['draft']
+
         else:
             new_payload = {
-                "draft_state": draft,
+                "draft_state": False,
+                "game_state": True,
                 "map": {},
                 "players": {},
                 "draft": {}
