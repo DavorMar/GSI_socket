@@ -16,13 +16,13 @@ def send(msg):
     client.send(message)
 
 def print_loading(i):
-    if i % 40 == 0:
+    if i % (2/TIME_SLEEPING) == 0:
         print("\r Fetching data | ", end="")
-    elif i % 40 == 10:
+    elif i % (2/TIME_SLEEPING) == 1.5/TIME_SLEEPING:
         print("\r Fetching data / ", end="")
-    elif i % 40 == 20:
+    elif i % (2/TIME_SLEEPING) == 1/TIME_SLEEPING:
         print("\r Fetching data - ", end="")
-    elif i % 40 == 30:
+    elif i % (2/TIME_SLEEPING) == 1.5/TIME_SLEEPING:
         print("\r Fetching data \ ", end="")
 
 if __name__ == "__main__":
@@ -51,7 +51,7 @@ if __name__ == "__main__":
         while True:
             print_loading(counter)
             counter += 1
-            if counter == 120:
+            if counter == 6/TIME_SLEEPING:
                 counter = 0
             try:
                 time.sleep(TIME_SLEEPING)
