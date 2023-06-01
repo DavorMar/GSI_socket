@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 HEADER = 5
 FORMAT = "utf-8"
 DISCONNECT_MESSAGE = "!DISC"
-CHUNK_SIZE = 1200
+
 TEST = False
 
 
@@ -25,7 +25,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         payload = json.loads(body)
         payload = self.filter_json(payload)
         payload = json.dumps(payload)
-        self.server.payload = [payload[i:i + CHUNK_SIZE] for i in range(0, len(payload), CHUNK_SIZE)]
+        self.server.payload = payload
         self.server.running = True
 
     def filter_json(self, payload):
@@ -44,7 +44,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 "draft_state": draft,
                 "map": {},
                 "players": {},
-                "draft":{}
+                "draft": {}
             }
             new_payload["map"]['game_time'] = payload['map']['game_time']
             new_payload["map"]['matchid'] = payload['map']['matchid']
@@ -96,7 +96,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     new_payload['players'][player]['slot6'] = payload['items'][team][player]['slot6']["name"]
                     new_payload['players'][player]['slot7'] = payload['items'][team][player]['slot7']["name"]
                     new_payload['players'][player]['slot8'] = payload['items'][team][player]['slot8']["name"]
-            return new_payload
+        return new_payload
 
 
 
@@ -141,22 +141,21 @@ class Server(HTTPServer):
     def send_data(self,conn):
             try:
                 payload = self.payload[:]
-                x = 0
-                conn.send(str(len(payload)).zfill(2).encode(FORMAT))
-                for chunk in payload:
-                    if x == len(payload) - 1:
-                        print("last packet")
-                        new_chunk = f"{str(x).zfill(2)}|{str(len(payload) - 1).zfill(2)}+{str(11).zfill(4)}+{chunk}"
-                    else:
-                        new_chunk = f"{str(x).zfill(2)}|{str(len(payload)-1).zfill(2)}+{str(len(payload[x+1])+11).zfill(4)}+{chunk}"
-                    conn.send(new_chunk.encode(FORMAT))
+                conn.send(str(len(payload)).zfill(5).encode(FORMAT))
+                totalsent = 0
+                while totalsent < len(payload):
+                    sent = conn.send(payload[totalsent:].encode(FORMAT))
+                    if sent == 0:
+                        raise RuntimeError("socket connection broken")
+                    totalsent = totalsent + sent
 
-                    time.sleep(0.0000001)
-                    if x == len(payload) - 1:
-                        print(f"{str(x).zfill(2)}|{str(len(payload)-1).zfill(2)}+{str(11).zfill(4)}")
-                    else:
-                        print(f"{str(x).zfill(2)}|{str(len(payload)-1).zfill(2)}+{str(len(payload[x+1])+11).zfill(4)}", len(new_chunk.encode(FORMAT)))
-                    x += 1
+
+
+
+
+
+
+
 
             except BlockingIOError as e:
                 print("blocking error")

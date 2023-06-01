@@ -40,21 +40,17 @@ if __name__ == "__main__":
         while True:
             try:
                 send("!GIVE")
-                loop_bool = True
-                next_chunk_size = CHUNK_SIZE
-                whole_data = {}
-                chunk = client.recv(2).decode(FORMAT)
-                for i in range(int(chunk)):
-                    whole_data[i] = ""
-                for i in range(int(chunk)):
-                    chunk2 = client.recv(next_chunk_size).decode(FORMAT)
-                    next_chunk_size = int(chunk2[6:10])
-                    whole_data[int(chunk2[:2])] = chunk2[11:]
-                    print(chunk2[:11])
-                    time.sleep(0.0001)
-                whole_data_string = ""
-                for string in whole_data.values():
-                    whole_data_string = whole_data_string + string
+                msg_len = client.recv(5).decode(FORMAT)
+                msg_len = int(msg_len)
+                bytes_recd = 0
+                whole_data_string = []
+                while bytes_recd < msg_len:
+                    chunk = client.recv(min(msg_len - bytes_recd, 1024))
+                    if chunk == b'':
+                        raise RuntimeError("socket connection broken")
+                    whole_data_string.append(chunk)
+                    bytes_recd = bytes_recd + len(chunk)
+                whole_data_string = b''.join(whole_data_string)
                 whole_data_json = json.loads(whole_data_string)
                 print(whole_data_json.keys())
                 print("finished")
