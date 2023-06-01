@@ -9,30 +9,21 @@ from datetime import datetime, timedelta
 HEADER = 5
 FORMAT = "utf-8"
 DISCONNECT_MESSAGE = "!DISC"
-
 TEST = False
-
 
 
 
 class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
-
-        now = datetime.now()
-        # print(self.client_address)
         length = int(self.headers["Content-Length"])
         body = self.rfile.read(length).decode("utf-8")
         payload = json.loads(body)
-        print(payload)
         try:
             payload = self.filter_json(payload)
-            print(payload)
             payload = json.dumps(payload)
             self.server.payload = payload
-
         except:
             pass
-
         self.server.running = True
 
     def filter_json(self, payload):
@@ -69,7 +60,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                     new_payload['players'][player] = {}
                     new_payload['players'][player]['steamid'] = payload['player'][team][player]['steamid']
                     new_payload['players'][player]['accountid'] = payload['player'][team][player]['accountid']
-
                     new_payload['players'][player]['name'] = payload['player'][team][player]['name']
                     new_payload['players'][player]['kills'] = payload['player'][team][player]['kills']
                     new_payload['players'][player]['deaths'] = payload['player'][team][player]['deaths']
@@ -109,10 +99,6 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 
 
-
-
-
-
 class Server(HTTPServer):
     def __init__(self,server_address, socket_port):
         super(Server, self).__init__(server_address, RequestHandler)
@@ -128,8 +114,6 @@ class Server(HTTPServer):
 
 
 
-
-
     def handle_client(self,conn, addr):
         print(f"New connection {addr} connected")
         while not self.exit_flag:
@@ -140,9 +124,7 @@ class Server(HTTPServer):
                     break
                 elif msg == "!GIVE":
                     self.send_data(conn)
-
             except BlockingIOError as e:
-
                 # Handle the BlockingIOError and continue the loop
                 if e.errno != 10035:
                     # Reraise the exception if it's not the expected error
@@ -150,22 +132,13 @@ class Server(HTTPServer):
     def send_data(self,conn):
             try:
                 payload = self.payload[:]
-                conn.send(str(len(payload)).zfill(5).encode(FORMAT))
+                conn.send(str(len(payload)).zfill(HEADER).encode(FORMAT))
                 totalsent = 0
                 while totalsent < len(payload):
                     sent = conn.send(payload[totalsent:].encode(FORMAT))
                     if sent == 0:
                         raise RuntimeError("socket connection broken")
                     totalsent = totalsent + sent
-
-
-
-
-
-
-
-
-
             except BlockingIOError as e:
                 print("blocking error")
                 if e.errno != 10035:
@@ -173,7 +146,6 @@ class Server(HTTPServer):
                     raise
             except (ConnectionResetError, ConnectionAbortedError):
                 print("possible disconnect")
-
                 conn.close()
 
     def start(self):
